@@ -6,7 +6,7 @@ import (
 	"series-tracker-backend/internal/db"
 	"series-tracker-backend/internal/models"
 )
-//Endpoint GET para todas las series en la DB
+//Endpoint GET for every serie in the DB
 func GetSeries(w http.ResponseWriter, r *http.Request) {
 	rows, err := db.DB.Query("SELECT id, name, description, image FROM series")
 	if err != nil {
@@ -37,7 +37,7 @@ func GetSeries(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(series)
 }
 
-//GET de serie por id.
+//GET series by id
 func GetSeriesByID(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Path[len("/series/"):]
 
@@ -52,5 +52,41 @@ func GetSeriesByID(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(s)
+}
+
+//POST create series in the DB
+func CreateSeries(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var s models.Series
+
+	err := json.NewDecoder(r.Body).Decode(&s)
+	if err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	// VALIDACIÓN BÁSICA
+	if s.Name == "" {
+		http.Error(w, "Name is required", http.StatusBadRequest)
+		return
+	}
+
+	err = db.DB.QueryRow(
+		"INSERT INTO series (name, description, image) VALUES ($1, $2, $3) RETURNING id",
+		s.Name, s.Description, s.Image,
+	).Scan(&s.ID)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(s)
 }
