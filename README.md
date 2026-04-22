@@ -4,6 +4,12 @@ REST API for managing TV series. Returns data in JSON format and is consumed by 
 
 ---
 
+## Frontend Repository
+
+https://github.com/alejandro-gperez/series_tracker_frontend
+
+---
+
 ## Live Demo
 
 Frontend: https://series-tracker-frontend.netlify.app/
