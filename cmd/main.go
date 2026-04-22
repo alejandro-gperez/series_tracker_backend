@@ -11,8 +11,21 @@ func main() {
 
 	db.Connect()
 
-	http.HandleFunc("/series/", handlers.GetSeriesByID)
+	//Handling by ID
+	http.HandleFunc("/series/", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			handlers.GetSeriesByID(w, r)
+		case http.MethodPut:
+			handlers.UpdateSeries(w, r)
+		case http.MethodDelete:
+			handlers.DeleteSeries(w, r)
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
 
+	//Listing and creating
 	http.HandleFunc("/series", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
 			handlers.GetSeries(w, r)
