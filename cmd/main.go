@@ -13,6 +13,8 @@ func main() {
 
 	http.HandleFunc("/series", handlers.GetSeries)
 
+	http.HandleFunc("/series/", handlers.GetSeriesByID)
+
 	http.HandleFunc("/marco", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("polo"))
 	})
