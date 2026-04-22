@@ -27,6 +27,11 @@ func main() {
 
 	db.Connect()
 
+	//For deployment
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Series Tracker API is running"))
+	})
+
 	// Handling by ID
 	http.HandleFunc("/series/", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
