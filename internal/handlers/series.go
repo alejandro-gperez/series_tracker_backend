@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"series-tracker-backend/internal/db"
 	"series-tracker-backend/internal/models"
 )
-//Endpoint GET for every serie in the DB
+
+// Endpoint GET for every serie in the DB
 func GetSeries(w http.ResponseWriter, r *http.Request) {
 	rows, err := db.DB.Query("SELECT id, name, description, image FROM series")
 	if err != nil {
@@ -37,7 +39,7 @@ func GetSeries(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(series)
 }
 
-//GET series by id
+// GET series by id
 func GetSeriesByID(w http.ResponseWriter, r *http.Request) {
 	id := r.URL.Path[len("/series/"):]
 
@@ -46,8 +48,11 @@ func GetSeriesByID(w http.ResponseWriter, r *http.Request) {
 	var s models.Series
 	err := row.Scan(&s.ID, &s.Name, &s.Description, &s.Image)
 
-	if err != nil {
+	if err == sql.ErrNoRows {
 		http.Error(w, "Series not found", http.StatusNotFound)
+		return
+	} else if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -55,7 +60,7 @@ func GetSeriesByID(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(s)
 }
 
-//POST create series in the DB
+// POST create series in the DB
 func CreateSeries(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
