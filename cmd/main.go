@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 	"series-tracker-backend/internal/db"
 	"series-tracker-backend/internal/handlers"
 )
@@ -57,5 +58,11 @@ func main() {
 
 	log.Println("Server running on :3000")
 
-	http.ListenAndServe(":3000", enableCORS(http.DefaultServeMux))
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "3000"
+	}
+
+	log.Println("Server running on :" + port)
+	http.ListenAndServe(":"+port, enableCORS(http.DefaultServeMux))
 }
