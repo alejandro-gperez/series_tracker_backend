@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"series-tracker-backend/internal/db"
 	"series-tracker-backend/internal/models"
+	"strconv"
 )
 
 // Endpoint GET for every serie in the DB. Search and filter by name or id with query validation (anti sql injection).
@@ -14,43 +15,43 @@ func GetSeries(w http.ResponseWriter, r *http.Request) {
 	sortParam := r.URL.Query().Get("sort")
 	orderParam := r.URL.Query().Get("order")
 
-	// 🛡️ VALIDACIÓN DE SORT
+	//SORT Validation
 	if sortParam != "name" && sortParam != "id" {
 		sortParam = "id"
 	}
 
-	// 🛡️ VALIDACIÓN DE ORDER
+	//Validate order
 	if orderParam != "asc" && orderParam != "desc" {
 		orderParam = "asc"
 	}
 
-	// 🧱 BASE QUERY
+	//BASE QUERY
 	baseQuery := "SELECT id, name, description, image FROM series"
 
 	var rows *sql.Rows
 	var err error
 
-	// 🔍 SI HAY BÚSQUEDA
+	//IF SEARCHING
 	if queryParam != "" {
 		baseQuery += " WHERE LOWER(name) LIKE LOWER($1)"
 		baseQuery += " ORDER BY " + sortParam + " " + orderParam
 
 		rows, err = db.DB.Query(baseQuery, "%"+queryParam+"%")
 	} else {
-		// 📚 SIN BÚSQUEDA
+		//NOT SEARCHING
 		baseQuery += " ORDER BY " + sortParam + " " + orderParam
 
 		rows, err = db.DB.Query(baseQuery)
 	}
 
-	// 💥 ERROR DE QUERY
+	//QUERY ERROR
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	defer rows.Close()
 
-	// 📦 RESULTADOS
+	//RESULTS
 	series := []models.Series{}
 
 	for rows.Next() {
@@ -63,13 +64,13 @@ func GetSeries(w http.ResponseWriter, r *http.Request) {
 		series = append(series, s)
 	}
 
-	// ⚠️ ERROR EN ITERACIÓN
+	//ITERATING ERROR
 	if err := rows.Err(); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// 📤 RESPUESTA
+	//RESPONSE
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(series)
@@ -138,10 +139,16 @@ func UpdateSeries(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := r.URL.Path[len("/series/"):]
+	// Parse ID correctly
+	idStr := r.URL.Path[len("/series/"):]
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		return
+	}
 
 	var s models.Series
-	err := json.NewDecoder(r.Body).Decode(&s)
+	err = json.NewDecoder(r.Body).Decode(&s)
 	if err != nil {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
@@ -162,7 +169,12 @@ func UpdateSeries(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rowsAffected, _ := result.RowsAffected()
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	if rowsAffected == 0 {
 		http.Error(w, "Series not found", http.StatusNotFound)
 		return
@@ -178,7 +190,13 @@ func DeleteSeries(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := r.URL.Path[len("/series/"):]
+	// Parse ID correctly
+	idStr := r.URL.Path[len("/series/"):]
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		return
+	}
 
 	result, err := db.DB.Exec("DELETE FROM series WHERE id=$1", id)
 	if err != nil {
@@ -186,7 +204,12 @@ func DeleteSeries(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rowsAffected, _ := result.RowsAffected()
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	if rowsAffected == 0 {
 		http.Error(w, "Series not found", http.StatusNotFound)
 		return
