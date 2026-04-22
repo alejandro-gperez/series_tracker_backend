@@ -7,11 +7,26 @@ import (
 	"series-tracker-backend/internal/handlers"
 )
 
+// CORS So that any frontend can reach
+func enableCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+		if r.Method == http.MethodOptions {
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 func main() {
 
 	db.Connect()
 
-	//Handling by ID
+	// Handling by ID
 	http.HandleFunc("/series/", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
@@ -25,7 +40,7 @@ func main() {
 		}
 	})
 
-	//Listing and creating
+	// Listing and creating
 	http.HandleFunc("/series", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
 			handlers.GetSeries(w, r)
@@ -41,5 +56,6 @@ func main() {
 	})
 
 	log.Println("Server running on :3000")
-	http.ListenAndServe(":3000", nil)
+
+	http.ListenAndServe(":3000", enableCORS(http.DefaultServeMux))
 }

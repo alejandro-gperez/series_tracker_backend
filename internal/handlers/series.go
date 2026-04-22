@@ -8,15 +8,49 @@ import (
 	"series-tracker-backend/internal/models"
 )
 
-// Endpoint GET for every serie in the DB
+// Endpoint GET for every serie in the DB. Search and filter by name or id with query validation (anti sql injection).
 func GetSeries(w http.ResponseWriter, r *http.Request) {
-	rows, err := db.DB.Query("SELECT id, name, description, image FROM series")
+	queryParam := r.URL.Query().Get("q")
+	sortParam := r.URL.Query().Get("sort")
+	orderParam := r.URL.Query().Get("order")
+
+	// 🛡️ VALIDACIÓN DE SORT
+	if sortParam != "name" && sortParam != "id" {
+		sortParam = "id"
+	}
+
+	// 🛡️ VALIDACIÓN DE ORDER
+	if orderParam != "asc" && orderParam != "desc" {
+		orderParam = "asc"
+	}
+
+	// 🧱 BASE QUERY
+	baseQuery := "SELECT id, name, description, image FROM series"
+
+	var rows *sql.Rows
+	var err error
+
+	// 🔍 SI HAY BÚSQUEDA
+	if queryParam != "" {
+		baseQuery += " WHERE LOWER(name) LIKE LOWER($1)"
+		baseQuery += " ORDER BY " + sortParam + " " + orderParam
+
+		rows, err = db.DB.Query(baseQuery, "%"+queryParam+"%")
+	} else {
+		// 📚 SIN BÚSQUEDA
+		baseQuery += " ORDER BY " + sortParam + " " + orderParam
+
+		rows, err = db.DB.Query(baseQuery)
+	}
+
+	// 💥 ERROR DE QUERY
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	defer rows.Close()
 
+	// 📦 RESULTADOS
 	series := []models.Series{}
 
 	for rows.Next() {
@@ -29,11 +63,13 @@ func GetSeries(w http.ResponseWriter, r *http.Request) {
 		series = append(series, s)
 	}
 
+	// ⚠️ ERROR EN ITERACIÓN
 	if err := rows.Err(); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	// 📤 RESPUESTA
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(series)
@@ -95,7 +131,7 @@ func CreateSeries(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(s)
 }
 
-//PUT Update existing series in DB
+// PUT Update existing series in DB
 func UpdateSeries(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPut {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -135,7 +171,7 @@ func UpdateSeries(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-//DELETE Delete an existing series from DB
+// DELETE Delete an existing series from DB
 func DeleteSeries(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodDelete {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
