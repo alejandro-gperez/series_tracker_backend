@@ -3,6 +3,8 @@ package db
 import (
 	"database/sql"
 	"log"
+	"os"
+	"strings"
 
 	_ "github.com/lib/pq"
 )
@@ -10,7 +12,20 @@ import (
 var DB *sql.DB
 
 func Connect() {
-	connStr := "postgres://postgres:1234@localhost:5432/seriesdb?sslmode=disable"
+	connStr := os.Getenv("DATABASE_URL")
+
+	if connStr == "" {
+		log.Fatal("DATABASE_URL not set")
+	}
+
+	// 🔥 FIX CLAVE: asegurar SSL para Render
+	if !strings.Contains(connStr, "sslmode=") {
+		if strings.Contains(connStr, "?") {
+			connStr += "&sslmode=require"
+		} else {
+			connStr += "?sslmode=require"
+		}
+	}
 
 	var err error
 	DB, err = sql.Open("postgres", connStr)
